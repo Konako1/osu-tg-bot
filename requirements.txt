@@ -1,0 +1,7 @@
+aiogram~=3.0.0b1
+asyncpg~=0.25.0
+httpx~=0.22.0
+humanize~=3.14.0
+Pillow~=9.0.1
+pydantic~=1.9.0
+pyttanko~=2.1.0
