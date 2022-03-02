@@ -1,0 +1,6 @@
+/OsuTgBot.zip
+/config.py
+/sql_migrations/90_polling_table.sql
+/sql_migrations/migration.py
+/beatmap_files/osu_file/
+/images/cache/map_bg_cover/
