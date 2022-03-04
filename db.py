@@ -145,3 +145,7 @@ class Db:
         for record in result:
             stat_list.append(CommandStat(record[0], record[1], record[2]))
         return stat_list
+
+    async def get_all_tg_id(self) -> list[int]:
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            return await conn.fetch('SELECT tg_id FROM remembered_users')
