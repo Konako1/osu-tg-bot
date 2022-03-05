@@ -9,7 +9,7 @@ from db import Db
 async def get_tg_ids() -> list[int]:
     db = await Db.connect(config.DB_USER, config.DB_PASSWORD, config.DB_HOST, config.DB_NAME)
     result = await db.get_all_tg_id()
-    db.close()
+    await db.close()
     return result
 
 

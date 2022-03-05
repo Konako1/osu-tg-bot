@@ -148,4 +148,8 @@ class Db:
 
     async def get_all_tg_id(self) -> list[int]:
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
-            return await conn.fetch('SELECT tg_id FROM remembered_users')
+            list_id = []
+            result = await conn.fetch('SELECT tg_id FROM remembered_users')
+            for tg_id in result:
+                list_id.append(tg_id[0])
+            return list_id
