@@ -75,7 +75,7 @@ def recent_message_constructor(score: Score, user: UserData, message_date: datet
         completed_line,
         pp_line,
         flag,
-        user.statistics.global_rank,
+        user.rankHistory['data'][-1],
         user_url,
         user.username,
         score_time,
