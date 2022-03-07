@@ -3,6 +3,7 @@ from io import BytesIO, StringIO
 from typing import Optional, Iterable, Iterator, TextIO
 
 from PIL import Image
+from httpx import HTTPStatusError
 
 from api_model.beatmap import BeatmapData
 from db import Db
@@ -43,7 +44,12 @@ async def get_score_position(score_id: int, user_id: int, beatmap_id: int, db: D
     if score_id is not None:
         position = await db.get_user_score_position(score_id)
         if position is None:
-            raw_submitted_user_beatmap_score = await request.get_user_beatmap_score(beatmap_id, user_id)
+            try:
+                raw_submitted_user_beatmap_score = await request.get_user_beatmap_score(beatmap_id, user_id)
+            except HTTPStatusError as e:
+                if e.response.status_code == 404:
+                    return None
+                raise
             submitted_score_id = raw_submitted_user_beatmap_score['score']['id']
             actual_position = raw_submitted_user_beatmap_score['position'] \
                 if submitted_score_id == score_id \
