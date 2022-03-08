@@ -1,9 +1,15 @@
+import asyncio
+from collections import Awaitable
+from typing import TextIO
+
 from PIL import Image
 from pyttanko import beatmap
 
 from api_model.base_score import Statistics
 from api_model.beatmap import BeatmapData
-from message_constructors.utils.cache_check import save_pic, get_saved_pic
+from db import Db
+from message_constructors.utils.cache_check import save_pic, get_saved_pic, get_osu_file
+from message_constructors.utils.class_constructor import create_score_class
 from message_constructors.utils.osu_calculators import get_pp_for_score
 from model.score import Score
 from request import Request
@@ -139,3 +145,19 @@ async def get_saved_image(beatmap_id: int, img_link: str, request: Request) -> I
         byte_cover = await request.get_pic_as_bytes(img_link)
         img = save_pic('map_bg_cover', beatmap_id, byte_cover)
     return img
+
+
+# TODO: try to compress requests in one function
+async def gather_requests(awaitable_list: list, operation: str, request: Request, db: Db) -> list:
+    result_list = []
+    if operation == 'score':
+        for item in awaitable_list:  # type: dict
+            result_list.append(create_score_class(item, request, db))
+    elif operation == 'osu_file':
+        for item in awaitable_list:  # type: Score
+            result_list.append(get_osu_file(item.beatmap.id, item.beatmap.last_updated, request))
+    elif operation == 'image':
+        for item in awaitable_list:  # type: Score
+            result_list.append(get_saved_image(item.beatmap.id, item.beatmapset.square_cover, request))
+    result = await asyncio.gather(*result_list)
+    return [item for item in result]

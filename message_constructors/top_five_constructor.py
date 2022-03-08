@@ -25,7 +25,7 @@ class MapData:
 
 
 # TODO: write pp and score place on bg || 09.02.2022
-def thumbnail_maker(image_list: list[Image.Image], pp_list: list[int]) -> BytesIO:
+def thumbnail_maker(image_list: list[Image.Image], pp_list: list[int] = [1, 1, 1, 1, 1]) -> BytesIO:
     parts = []
     plays_data = [
         MapData(image_list[3], pp_list[3], 4, 80),
