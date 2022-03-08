@@ -25,24 +25,27 @@ async def profile(message: Message, request: Request, db: Db, bot: Bot, command:
                              '/remember_me to use that command without writing username.')
     if user_id == 0:
         return message.reply('User not found.')
+
     try:
         user_data = await create_user_data_class(user_id, request)
         scores = await get_scores(user_id, request, 'best', 1)
+        score = await create_score_class(scores[0], request, db)
+        osu_file = await get_osu_file(score.beatmap.id, score.beatmap.last_updated, request)
     except ReadTimeout:
         return message.reply('Bancho is dead.')
     except HTTPStatusError as e:
         if e.response.status_code // 100 == 5:
             return message.reply('Bancho is dead.')
         raise
-    try:
-        score = await create_score_class(scores[0], request, db)
-        osu_file = await get_osu_file(score.beatmap.id, score.beatmap.last_updated, request)
     except TypeError as e:
         return message.reply("User hasn't set any scores yet.")
-    msg = profile_message_constructor(user_data, score, osu_file)
-    osu_file.close()
+
     photo = user_data.avatar_url
     if await request.get_status_code(photo) >= 300:
         photo = FSInputFile('images/default_user_avatar.png')
+
+    msg = profile_message_constructor(user_data, score, osu_file)
     await message.reply_photo(photo, msg)
     await db.save_command_stat(message.date, 'profile', message.from_user.id)
+
+    osu_file.close()
