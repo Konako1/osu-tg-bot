@@ -57,7 +57,7 @@ class Db:
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
             await conn.execute('INSERT INTO osu_users(osu_id, username) '
                                'VALUES ($1, $2)'
-                               'ON CONFLICT(osu_id) DO UPDATE SET osu_id=$3',
+                               'ON CONFLICT(osu_id) DO UPDATE SET username=$3',
                                osu_id, username, username)
 
     async def get_cached_osu_id_by_username(self, username: str) -> Optional[int]:
