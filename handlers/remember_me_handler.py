@@ -15,7 +15,7 @@ async def remember_me_handler(message: Message, request: Request, db: Db, comman
     if username is None:
         return message.reply('You forgot to write a nickname to remember.')
     result = await bind_osu_id_with_tg_id(username, db, request, message.from_user.id)
-    if result == 0:
+    if not result:
         return message.reply('User not found.')
     await message.reply('Remembered!')
     await db.save_command_stat(message.date, 'remember_me', message.from_user.id)

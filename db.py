@@ -34,7 +34,8 @@ class Db:
         """
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
             await conn.execute('INSERT INTO remembered_users(tg_id, osu_id) '
-                               'VALUES ($1, $2) ',
+                               'VALUES ($1, $2) '
+                               'ON CONFLICT(tg_id) DO UPDATE SET osu_id=$2',
                                tg_id, osu_id)
 
     async def get_cached_osu_id_by_tg_id(self, tg_id: int) -> Optional[int]:
