@@ -58,8 +58,8 @@ class Db:
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
             await conn.execute('INSERT INTO osu_users(osu_id, username) '
                                'VALUES ($1, $2)'
-                               'ON CONFLICT(osu_id) DO UPDATE SET username=$3',
-                               osu_id, username, username)
+                               'ON CONFLICT(osu_id) DO UPDATE SET username=$2',
+                               osu_id, username)
 
     async def get_cached_osu_id_by_username(self, username: str) -> Optional[int]:
         """Return osu user id. Returns None if no id saved."""
@@ -106,8 +106,8 @@ class Db:
         """
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
             await conn.execute('INSERT INTO score_positions(score_id, position) '
-                               'VALUES ($1, $2) ON CONFLICT(score_id) DO UPDATE SET position=$3',
-                               score_id, position, position)
+                               'VALUES ($1, $2) ON CONFLICT(score_id) DO UPDATE SET position=$2',
+                               score_id, position)
 
     async def get_user_score_position(self, score_id: int) -> Optional[int]:
         """Returns user's position on a map by score id."""
@@ -141,7 +141,10 @@ class Db:
             else:
                 result: list[asyncpg.Record] = await conn.fetch("SELECT date, command, tg_user_id "
                                                                 "FROM stat "
-                                                                "WHERE EXTRACT(DAY FROM date)=$1",
+                                                                "WHERE EXTRACT("
+                                                                "DAY FROM date "
+                                                                "AT TIME ZONE 'Asia/Yekaterinburg'"
+                                                                ")=$1",
                                                                 date.day)
         stat_list: list[CommandStat] = []
         for record in result:
