@@ -39,24 +39,19 @@ async def bind_osu_id_with_tg_id(username: str, db: Db, request: Request, tg_use
     return True
 
 
-async def get_score_position(score_id: int, user_id: int, beatmap_id: int, db: Db, request: Request) -> int:
+async def get_score_position(score_id: int, user_id: int, beatmap_id: int, request: Request) -> Optional[int]:
     position = None
     if score_id is not None:
-        position = await db.get_user_score_position(score_id)
-        if position is None:
-            try:
-                raw_submitted_user_beatmap_score = await request.get_user_beatmap_score(beatmap_id, user_id)
-            except HTTPStatusError as e:
-                if e.response.status_code == 404:
-                    return None
-                raise
-            submitted_score_id = raw_submitted_user_beatmap_score['score']['id']
-            actual_position = raw_submitted_user_beatmap_score['position'] \
-                if submitted_score_id == score_id \
-                else None
-            if actual_position != position:
-                await db.cache_user_score_position(submitted_score_id, actual_position)
-            position = actual_position
+        try:
+            raw_submitted_user_beatmap_score = await request.get_user_beatmap_score(beatmap_id, user_id)
+        except HTTPStatusError as e:
+            if e.response.status_code == 404:
+                return None
+            raise
+        submitted_score_id = raw_submitted_user_beatmap_score['score']['id']
+        position = raw_submitted_user_beatmap_score['position'] \
+            if submitted_score_id == score_id \
+            else None
     return position
 
 
