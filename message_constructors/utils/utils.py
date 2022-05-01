@@ -1,6 +1,6 @@
 import asyncio
-from collections import Awaitable
-from typing import TextIO
+import re
+from collections import Counter
 
 from PIL import Image
 from pyttanko import beatmap
@@ -145,6 +145,15 @@ async def get_saved_image(beatmap_id: int, img_link: str, request: Request) -> I
         byte_cover = await request.get_pic_as_bytes(img_link)
         img = save_pic('map_bg_cover', beatmap_id, byte_cover)
     return img
+
+
+async def get_id_list(args: str, db: Db) -> list[int]:
+    id_count: Counter[int, int] = Counter()
+    divided_args = re.findall('([a-z0-9]*)', args, re.IGNORECASE)
+    for word in divided_args:
+        id_list = await db.get_id_by_token(word)
+        id_count.update(id_list)
+    return [x[0] for x in id_count.most_common()]
 
 
 # TODO: try to compress requests in one function

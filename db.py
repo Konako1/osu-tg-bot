@@ -6,6 +6,16 @@ import asyncpg
 
 
 @dataclass
+class MusicData:
+    beatmap_id: int
+    file_id: str
+    title: str
+    artist: str
+    mapper: str
+    length: int
+
+
+@dataclass
 class CommandStat:
     date: datetime
     command: str
@@ -116,6 +126,59 @@ class Db:
                                        'FROM score_positions '
                                        'WHERE score_id=$1',
                                        score_id)
+
+    async def find_music(self, value: str, cursor: int) -> list[MusicData]:
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            result: list[asyncpg.Record] = await conn.fetch("SELECT beatmap_id, file_id, artist, title, length, mapper "
+                                                            "FROM music_search "
+                                                            f"WHERE music_search.artist || "
+                                                            f"' ' || music_search.title || "
+                                                            f"' ' || music_search.mapper "
+                                                            f"ILIKE $1 "
+                                                            f"ORDER BY beatmap_id "
+                                                            f"OFFSET $2 "
+                                                            f"LIMIT 11",
+                                                            f"%{value}%", cursor*10)
+            music: list[MusicData] = []
+            for music_data in result:
+                music.append(MusicData(
+                    beatmap_id=music_data[0],
+                    file_id=music_data[1],
+                    artist=music_data[2],
+                    title=music_data[3],
+                    length=music_data[4],
+                    mapper=music_data[5],
+
+                ))
+            return music
+
+    async def find_music_by_id(self, beatmap_id: int) -> Optional[MusicData]:
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            result: asyncpg.Record = await conn.fetchrow("SELECT beatmap_id, file_id, artist, title, length, mapper "
+                                                         "FROM music_search "
+                                                         "WHERE beatmap_id=$1",
+                                                         beatmap_id)
+            if result is None:
+                return None
+            return MusicData(
+                beatmap_id=result[0],
+                file_id=result[1],
+                artist=result[2],
+                title=result[3],
+                length=result[4],
+                mapper=result[5],
+            )
+
+    async def get_id_by_token(self, word: str) -> list[int]:
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            result: list[asyncpg.Record] = await conn.fetch('SELECT beatmap_id '
+                                                            'FROM music_tokens '
+                                                            'WHERE word=$1',
+                                                            word)
+            id_list: list[int] = []
+            for beatmap_id in result:
+                id_list.append(beatmap_id[0])
+            return id_list
 
     async def save_command_stat(self, message_date: datetime, command: str, tg_user_id: int) -> None:
         """
