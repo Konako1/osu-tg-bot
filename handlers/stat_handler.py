@@ -1,5 +1,6 @@
 from aiogram import Router, F
 from aiogram.types import Message
+from collections import Counter
 
 import config
 from db import Db, CommandStat
@@ -9,22 +10,16 @@ router = Router()
 
 def stat_builder(list_stat: list[CommandStat]) -> str:
     user_list = []
-    command_stat = {
-        'recent': 0,
-        'profile': 0,
-        'top5': 0,
-        'remember_me': 0,
-    }
+    command_stat: Counter[str, int] = Counter()
     for stat in list_stat:
         if stat.tg_user_id not in user_list:
             user_list.append(stat.tg_user_id)
         command_stat[stat.command] += 1
-    return ('Commands:\n'
-            f'Recent: {command_stat["recent"]}\n'
-            f'Profile: {command_stat["profile"]}\n'
-            f'Top 5: {command_stat["top5"]}\n'
-            f'Remembered users: {command_stat["remember_me"]}\n'
-            f'\nUsers in total: {len(user_list)}')
+    result_message = 'Commands:\n'
+    for command, count in sorted(command_stat.items()):
+        result_message += f'{command.upper()}: {count}\n'
+    result_message += f'\nUsers in total: {len(user_list)}'
+    return result_message
 
 
 @router.message(F.chat.id == config.REPORT_CHAT_ID, commands=['all_stat', 'as', 'a'])
