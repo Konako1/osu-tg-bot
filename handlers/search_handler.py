@@ -29,7 +29,9 @@ async def search(message: Message, db: Db, command: CommandObject, bot: Bot):
     music = await search_constructor(args, 0, db)
 
     if music:
-        return message.reply('Songs found:', reply_markup=await create_music_buttons(music, args, 0))
+        await message.reply('Songs found:', reply_markup=await create_music_buttons(music, args, 0))
+        await db.save_command_stat(message.date, 'search', message.from_user.id)
+        return
     else:
         return message.reply('Track not found :(')
 
