@@ -48,6 +48,12 @@ class Db:
                                'ON CONFLICT(tg_id) DO UPDATE SET osu_id=$2',
                                tg_id, osu_id)
 
+    async def remove_user_from_remember_me(self, tg_user_id: int) -> None:
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            await conn.execute('DELETE FROM remembered_users '
+                               'WHERE tg_id=?',
+                               tg_user_id)
+
     async def get_cached_osu_id_by_tg_id(self, tg_id: int) -> Optional[int]:
         """Returns osu user id. Returns None if no id saved."""
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
