@@ -24,7 +24,6 @@ message_v05 = 'Hello there. This bot had been updated to version 0.5.\n\n' \
 
 async def get_tg_ids(db: Db) -> list[int]:
     result = await db.get_all_tg_id()
-    await db.close()
     return result
 
 
@@ -58,6 +57,7 @@ async def main():
             await db.remove_user_from_remember_me(tg_id)
         await asyncio.sleep(0.05)
     await bot.session.close()
+    await db.close()
     await asyncio.sleep(0.1)
 
 
