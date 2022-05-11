@@ -191,7 +191,7 @@ class Db:
         Saves command info for statistics.
 
         :param message_date: Message date. Datetime with timezone.
-        :param command: Bot commands as text. Available commands - "recent", "profile", "top5", "remember_me".
+        :param command: Bot commands as text. Available commands - "recent", "profile", "top5", "remember_me", "track".
         :param tg_user_id: Telegram user id.
         """
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
@@ -201,7 +201,7 @@ class Db:
 
     async def get_all_stat(self, date: datetime = None) -> list[CommandStat]:
         """
-        Message date, command and telegram user id for given day sa CommandStat dataclass. Returns all statistics if day is not given.
+        Returns message date, command and telegram user id for given day sa CommandStat dataclass. Returns all statistics if day is not given.
         """
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
             if date is None:
@@ -213,8 +213,16 @@ class Db:
                                                                 "WHERE EXTRACT("
                                                                 "DAY FROM date "
                                                                 "AT TIME ZONE 'Asia/Yekaterinburg'"
-                                                                ")=$1",
-                                                                date.day)
+                                                                ")=$1 "
+                                                                "AND EXTRACT("
+                                                                "MONTH FROM date "
+                                                                "AT TIME ZONE 'Asia/Yekaterinburg'"
+                                                                ")=$2 "
+                                                                "AND EXTRACT("
+                                                                "YEAR FROM date "
+                                                                "AT TIME ZONE 'Asia/Yekaterinburg'"
+                                                                ")=$3",
+                                                                date.day, date.month, date.year)
         stat_list: list[CommandStat] = []
         for record in result:
             stat_list.append(CommandStat(record[0], record[1], record[2]))
