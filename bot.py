@@ -1,15 +1,25 @@
+import html
 import asyncio
 
 from aiogram import Bot, Dispatcher
 from aiogram.types import BotCommand, Update
 
 from db import Db
+from config import DB_NAME, DB_HOST, DB_USER, DB_PASSWORD, REPORT_CHAT_ID
+from config import TG_TOKEN
 from handlers import recent_handler, top_five_handler, profile_handler, remember_me_handler, start_handler, \
     stat_handler, search_handler
 from config import TG_TOKEN, DB_NAME, DB_HOST, DB_USER, DB_PASSWORD
 from request import create_request
 
 dp = Dispatcher()
+
+
+@dp.errors()
+async def errors_handler(update: Update, exception: Exception, bot: Bot):
+    message = f'While handling <code>{update.message.text}</code> an error occurred:\n' \
+              f'<b>{exception.__class__.__name__}</b>: <code>{html.escape(str(exception))}</code>'
+    await bot.send_message(REPORT_CHAT_ID, message)
 
 
 @dp.startup()
