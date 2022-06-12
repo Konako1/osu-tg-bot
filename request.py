@@ -1,14 +1,18 @@
 from asyncio import sleep, create_task
-from pprint import pprint
-from typing import Any, Iterator
+from typing import Any, Optional, Union
 
 import httpx
 import config
 
-BASE_URL = 'https://osu.ppy.sh/api/v2'
+BASE_URL = 'https://osu.ppy.sh'
+API_V2 = 'api/v2'
 
 
 def api_build_url(fragment: str) -> str:
+    return BASE_URL + '/' + API_V2 + '/' + fragment.lstrip('/')
+
+
+def api_build_sr_url(fragment: str) -> str:
     return BASE_URL + '/' + fragment.lstrip('/')
 
 
@@ -35,14 +39,19 @@ class Request:
             self,
             http_method: str,
             method: str,
-            params: dict[str, Any],
+            params: Optional[dict[str, Any]] = None,
+            json: Optional[dict[str, Union[int, list[dict[str, str]]]]] = None
     ) -> Any:
-        url = api_build_url(method)
         if http_method == 'GET':
             response = await self._session.get(
-                url,
+                api_build_url(method),
                 headers={'Authorization': 'Bearer ' + self._token},
                 params=params
+            )
+        elif http_method == 'POST':
+            response = await self._session.post(
+                api_build_sr_url(method),
+                json=json
             )
         else:
             raise NotImplementedError
@@ -128,6 +137,18 @@ class Request:
     ) -> bytes:
         response = await self._session.get(url)
         return response.content
+
+    async def get_star_rating(
+            self,
+            beatmap_id: int,
+            mods: list[str],
+            ruleset_id: int
+    ):
+        return await self.api_request(
+            'POST',
+            'difficulty-rating',
+            json={'beatmap_id': beatmap_id, 'mods': [{'acronym': mod} for mod in mods], 'ruleset_id': 0}  # 0 - osu!, 1 - taiko, 2 - fruits, 3 - mania
+        )
 
 
 async def create_request():

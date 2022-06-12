@@ -21,7 +21,7 @@ async def get_scores(user_id: int, request: Request, score_type: str, limit: int
 async def create_score_class(score: dict, request: Request, db: Db) -> Score:
     base_score = BaseScore.parse_obj(score)
     beatmap_data = await get_beatmap_data(base_score.beatmap.id, base_score.beatmap.last_updated, db, request)
-    position = await get_score_position(base_score.id, base_score.user_id, base_score.beatmap.id, request)
+    position = await get_score_position(base_score.best_id, base_score.created_at, base_score.user_id, base_score.beatmap.id, request)
     return Score.parse_obj({**base_score.dict(by_alias=True), "beatmap_data": beatmap_data, "position": position})
 
 

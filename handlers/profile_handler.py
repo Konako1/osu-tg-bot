@@ -30,7 +30,7 @@ async def profile(message: Message, request: Request, db: Db, bot: Bot, command:
         user_data = await create_user_data_class(user_id, request)
         scores = await get_scores(user_id, request, 'best', 1)
         score = await create_score_class(scores[0], request, db)
-        osu_file = await get_osu_file(score.beatmap.id, score.beatmap.last_updated, request)
+        star_rating = await request.get_star_rating(score.beatmap.id, score.mods, score.mode_int)
     except ReadTimeout:
         return message.reply('Bancho is dead.')
     except HTTPStatusError as e:
@@ -44,8 +44,6 @@ async def profile(message: Message, request: Request, db: Db, bot: Bot, command:
     if await request.get_status_code(photo) >= 300:
         photo = FSInputFile('images/default_user_avatar.png')
 
-    msg = profile_message_constructor(user_data, score, osu_file)
+    msg = profile_message_constructor(user_data, score, star_rating)
     await message.reply_photo(photo, msg)
     await db.save_command_stat(message.date, 'profile', message.from_user.id)
-
-    osu_file.close()

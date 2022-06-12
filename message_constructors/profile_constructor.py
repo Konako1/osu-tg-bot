@@ -1,10 +1,7 @@
-from typing import Iterator
-
 import humanize
 
 from api_model.user_data import UserData
 from message_constructors.score_info_constructors import get_score_as_text_mini
-from message_constructors.utils.osu_calculators import get_converted_star_rating, get_expanded_beatmap_file
 from message_constructors.utils.utils import build_flag, build_user_url, build_rank_history_line, build_combo_line, \
     parse_score_rank, build_social_media_line, build_user_rank_line, build_miss_line, parse_mods, build_position_line, \
     build_position_line_mini
@@ -55,7 +52,7 @@ def get_message_text_player(
            f'Joined {humanize.naturalday(user.join_date, format="%d %B %Y")}'
 
 
-def profile_message_constructor(user: UserData, best_score: Score, osu_file: Iterator[str]):
+def profile_message_constructor(user: UserData, best_score: Score, star_rating: float):
     flag = build_flag(user.country_code)
     user_url = build_user_url(user.id)
     rank_history_line = build_rank_history_line(user.rank_history)
@@ -72,8 +69,6 @@ def profile_message_constructor(user: UserData, best_score: Score, osu_file: Ite
     miss_count = build_miss_line(best_score.statistics.count_miss)
     mods_line = parse_mods(best_score.mods)
     position_line = build_position_line_mini(best_score.position)
-    expanded_beatmap_file = get_expanded_beatmap_file(osu_file)
-    star_rating = get_converted_star_rating(best_score.mods, expanded_beatmap_file).total
     social_media_line = build_social_media_line(user.discord, user.twitter, user.website)
     return get_message_text_player(
         best_score,

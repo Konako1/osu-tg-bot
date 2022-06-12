@@ -18,6 +18,7 @@ class BaseScore(BaseModel):
     accuracy: float
     beatmap: Beatmap
     beatmapset: Beatmapset
+    best_id: Optional[int]
     created_at: datetime
     id: Optional[int]
     max_combo: int
@@ -29,7 +30,4 @@ class BaseScore(BaseModel):
     score: int
     statistics: Statistics
     user_id: int
-
-
-
-
+    mode_int: int

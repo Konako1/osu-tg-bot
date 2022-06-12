@@ -1,6 +1,7 @@
 from datetime import datetime
-from io import BytesIO, StringIO
-from typing import Optional, Iterable, Iterator, TextIO
+from io import BytesIO
+from pprint import pprint
+from typing import Optional, TextIO
 
 from PIL import Image
 from httpx import HTTPStatusError
@@ -39,7 +40,7 @@ async def bind_osu_id_with_tg_id(username: str, db: Db, request: Request, tg_use
     return True
 
 
-async def get_score_position(score_id: int, user_id: int, beatmap_id: int, request: Request) -> Optional[int]:
+async def get_score_position(score_id: int, created_at: datetime, user_id: int, beatmap_id: int, request: Request) -> Optional[int]:
     position = None
     if score_id is not None:
         try:
@@ -48,9 +49,8 @@ async def get_score_position(score_id: int, user_id: int, beatmap_id: int, reque
             if e.response.status_code == 404:
                 return None
             raise
-        submitted_score_id = raw_submitted_user_beatmap_score['score']['id']
         position = raw_submitted_user_beatmap_score['position'] \
-            if submitted_score_id == score_id \
+            if datetime.fromisoformat(raw_submitted_user_beatmap_score['score']['created_at']) == created_at \
             else None
     return position
 

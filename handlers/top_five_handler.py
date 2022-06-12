@@ -1,6 +1,4 @@
-import time
 from io import BytesIO
-from typing import TextIO
 
 from PIL import Image
 from aiogram import Router, Bot
@@ -32,9 +30,9 @@ async def top_five(message: Message, command: CommandObject, request: Request, d
     try:
         dict_scores = await get_scores(user_id, request, 'best', 5)
         scores: list[Score] = await gather_requests(dict_scores, 'score', request, db)
-        osu_files: list[TextIO] = await gather_requests(scores, 'osu_file', request, db)
         images: list[Image.Image] = await gather_requests(scores, 'image', request, db)
         user_data = await create_user_data_class(user_id, request)
+        star_ratings = await gather_requests(scores, 'sr', request, db)
     except ReadTimeout:
         return message.reply('Bancho is dead.')
     except HTTPStatusError as e:
@@ -52,9 +50,6 @@ async def top_five(message: Message, command: CommandObject, request: Request, d
         bg.save(thumbnail, 'png')
     thumbnail.seek(0)
 
-    msg = top_five_message_constructor(scores, user_data, osu_files)
+    msg = top_five_message_constructor(scores, user_data, star_ratings)
     await message.reply_photo(BufferedInputFile(thumbnail.read(), "file.png"), msg)
     await db.save_command_stat(message.date, 'top5', message.from_user.id)
-
-    for file in osu_files:
-        file.close()

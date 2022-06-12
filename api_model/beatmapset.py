@@ -12,7 +12,7 @@ class Beatmapset(BaseModel):
     creator_id: Annotated[int, Field(alias='user_id')]
 
     @property
-    def cover(self):
+    def cover(self) -> str:
         return self.covers['cover']
 
     @property

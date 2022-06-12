@@ -1,18 +1,13 @@
 import os
 from dataclasses import dataclass
 from io import BytesIO
-from pprint import pprint
-from typing import Iterator
 
-from PIL import ImageOps, ImageDraw, ImageFont
+from PIL import ImageOps
 from PIL import Image
 
 from api_model.user_data import UserData
 from message_constructors.score_info_constructors import get_score_as_text_mini
-from message_constructors.utils.cache_check import get_saved_pic, save_pic
-from message_constructors.utils.osu_calculators import get_expanded_beatmap_file, get_converted_star_rating
-from message_constructors.utils.utils import build_combo_line, parse_mods, build_user_url, build_flag, \
-    is_star_rating_right, parse_score_rank, build_miss_line, build_position_line_mini
+from message_constructors.utils.utils import build_combo_line, parse_mods, build_user_url, build_flag, parse_score_rank, build_miss_line, build_position_line_mini
 from model.score import Score
 
 
@@ -60,7 +55,7 @@ def thumbnail_maker(image_list: list[Image.Image], pp_list: list[int] = [1, 1, 1
     return tmp
 
 
-def top_five_message_constructor(scores: list[Score], user: UserData, osu_files: list[Iterator[str]]) -> str:
+def top_five_message_constructor(scores: list[Score], user: UserData, star_ratings: list[float]) -> str:
     user_url = build_user_url(user.id)
     flag = build_flag(user.country_code)
     message = f"{flag} <b><a href='{user_url}'>{user.username}'s</a> (#{user.rankHistory['data'][-1]})</b> best scores:\n\n"
@@ -68,12 +63,8 @@ def top_five_message_constructor(scores: list[Score], user: UserData, osu_files:
         rank_line = parse_score_rank(score.rank)
         combo_line = build_combo_line(score.max_combo, score.beatmap_data.max_combo, score.perfect)
         mods_line = parse_mods(score.mods)
-        expanded_beatmap_file = get_expanded_beatmap_file(osu_files[i])
         miss_count = build_miss_line(score.statistics.count_miss)
         position_line = build_position_line_mini(score.position)
-        star_rating = score.beatmap_data.stars \
-            if is_star_rating_right(mods_line) \
-            else get_converted_star_rating(score.mods, expanded_beatmap_file).total
         score = get_score_as_text_mini(
             score.beatmap_data.url,
             score.beatmapset.artist,
@@ -84,7 +75,7 @@ def top_five_message_constructor(scores: list[Score], user: UserData, osu_files:
             combo_line,
             miss_count,
             mods_line,
-            star_rating,
+            star_ratings[i],
             score.pp,
             score.created_at,
             position_line,

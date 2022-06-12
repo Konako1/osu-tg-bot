@@ -157,16 +157,22 @@ async def get_id_list(args: str, db: Db) -> list[int]:
 
 
 # TODO: try to compress requests in one function
-async def gather_requests(awaitable_list: list, operation: str, request: Request, db: Db) -> list:
+async def gather_requests(item_list: list, operation: str, request: Request, db: Db) -> list:
     result_list = []
     if operation == 'score':
-        for item in awaitable_list:  # type: dict
+        for item in item_list:  # type: dict
             result_list.append(create_score_class(item, request, db))
     elif operation == 'osu_file':
-        for item in awaitable_list:  # type: Score
+        for item in item_list:  # type: Score
             result_list.append(get_osu_file(item.beatmap.id, item.beatmap.last_updated, request))
     elif operation == 'image':
-        for item in awaitable_list:  # type: Score
+        for item in item_list:  # type: Score
             result_list.append(get_saved_image(item.beatmap.id, item.beatmapset.square_cover, request))
+    elif operation == 'status_code':
+        for item in item_list:  # type: str
+            result_list.append(request.get_status_code(item))
+    elif operation == 'sr':
+        for item in item_list:  # type: Score
+            result_list.append(request.get_star_rating(item.beatmap.id, item.mods, item.mode_int))
     result = await asyncio.gather(*result_list)
     return [item for item in result]
