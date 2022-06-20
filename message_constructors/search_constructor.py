@@ -10,7 +10,7 @@ async def search_constructor(args: str, cursor: int, db: Db) -> Optional[list[Mu
     match = re.match(id_pattern, args)
     if match is not None:
         song = await db.find_music_by_id(int(match[1]))
-        return [song]
+        return song
 
     music: list[MusicData] = []
     music.extend(await db.find_music(args, cursor))
@@ -26,5 +26,5 @@ async def search_constructor(args: str, cursor: int, db: Db) -> Optional[list[Mu
             if beatmap_id == song.beatmap_id:
                 in_music = True
         if not in_music:
-            music.append(await db.find_music_by_id(beatmap_id))
+            [music.append(beatmap_id) for beatmap_id in await db.find_music_by_id(beatmap_id)]
     return music
