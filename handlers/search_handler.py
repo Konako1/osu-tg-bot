@@ -63,8 +63,9 @@ async def create_music_buttons(music: list[MusicData], args: str, cursor: int) -
 async def send_song(query: CallbackQuery, db: Db, callback_data: Song):
     await query.answer()
     beatmap_id = callback_data.beatmap_id
-    song = await db.find_music_by_id(beatmap_id)
-    return query.message.reply_audio(song.file_id, f'https://osu.ppy.sh/beatmapsets/{beatmap_id}')
+    music = await db.find_music_by_id(beatmap_id)
+    for song in music:
+        await query.message.reply_audio(song.file_id, f'https://osu.ppy.sh/beatmapsets/{beatmap_id}')
 
 
 @router.callback_query(NextPage.filter())

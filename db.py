@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 
 import asyncpg
 
@@ -13,6 +13,7 @@ class MusicData:
     artist: str
     mapper: str
     length: int
+    tags: Optional[str] = None
 
 
 @dataclass
@@ -135,13 +136,17 @@ class Db:
 
     async def find_music(self, value: str, cursor: int) -> list[MusicData]:
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
-            result: list[asyncpg.Record] = await conn.fetch("SELECT beatmap_id, file_id, artist, title, length, mapper "
+            result: list[asyncpg.Record] = await conn.fetch("SELECT m.beatmap_id, file_id, artist, title, length, m.mapper "
                                                             "FROM music_search "
+                                                            "JOIN music_search_mappers msm "
+                                                            "ON music_search.id = msm.music_search_id "
+                                                            "JOIN mappers m "
+                                                            "ON m.id = msm.mapper_id "
                                                             f"WHERE music_search.artist || "
                                                             f"' ' || music_search.title || "
-                                                            f"' ' || music_search.mapper "
+                                                            f"' ' || m.mapper "
                                                             f"ILIKE $1 "
-                                                            f"ORDER BY beatmap_id "
+                                                            f"ORDER BY m.beatmap_id "
                                                             f"OFFSET $2 "
                                                             f"LIMIT 11",
                                                             f"%{value}%", cursor*10)
@@ -158,22 +163,29 @@ class Db:
                 ))
             return music
 
-    async def find_music_by_id(self, beatmap_id: int) -> Optional[MusicData]:
+    async def find_music_by_id(self, beatmap_id: int) -> Optional[list[MusicData]]:
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
-            result: asyncpg.Record = await conn.fetchrow("SELECT beatmap_id, file_id, artist, title, length, mapper "
+            result: asyncpg.Record = await conn.fetch("SELECT m.beatmap_id, file_id, artist, title, length, m.mapper "
                                                          "FROM music_search "
-                                                         "WHERE beatmap_id=$1",
+                                                         "JOIN music_search_mappers msm "
+                                                         "ON music_search.id = msm.music_search_id "
+                                                         "JOIN mappers m "
+                                                         "ON m.id = msm.mapper_id "
+                                                         "WHERE m.beatmap_id=$1",
                                                          beatmap_id)
             if result is None:
                 return None
-            return MusicData(
-                beatmap_id=result[0],
-                file_id=result[1],
-                artist=result[2],
-                title=result[3],
-                length=result[4],
-                mapper=result[5],
-            )
+            music = []
+            for song in result:
+                music.append(MusicData(
+                    beatmap_id=song[0],
+                    file_id=song[1],
+                    artist=song[2],
+                    title=song[3],
+                    length=song[4],
+                    mapper=song[5],
+                ))
+            return music
 
     async def get_id_by_token(self, word: str) -> list[int]:
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
@@ -227,6 +239,84 @@ class Db:
         for record in result:
             stat_list.append(CommandStat(record[0], record[1], record[2]))
         return stat_list
+
+    async def save_music(self, file_id: str, artist: str, title: str, length: int, is_tv_size: bool, is_bpm_changed: bool) -> Optional[int]:
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            music_id = await conn.fetchval('SELECT id FROM music_search '
+                                               'WHERE artist=$1 AND title=$2 AND length=$3',
+                                               artist, title, length)
+            if music_id is not None:
+                return int(music_id)
+            return int(await conn.fetchval('INSERT INTO music_search(file_id, artist, title, length, is_tv_size, is_bpm_changed) '
+                                           'VALUES ($1, $2, $3, $4, $5, $6) '
+                                           'ON CONFLICT (artist, title, length) DO NOTHING '
+                                           'RETURNING id',
+                                           file_id, artist, title, length, is_tv_size, is_bpm_changed))
+
+    async def save_mapper(self, mapper: str, beatmap_id: int) -> int:
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            mapper_id = await conn.fetchval('SELECT id FROM mappers '
+                                                'WHERE mapper=$1 AND beatmap_id=$2',
+                                                mapper, beatmap_id)
+            if mapper_id is not None:
+                return int(mapper_id)
+            return int(await conn.fetchval('INSERT INTO mappers(mapper, beatmap_id) '
+                                           'VALUES ($1, $2) '
+                                           'ON CONFLICT (mapper, beatmap_id) DO NOTHING '
+                                           'RETURNING id',
+                                           mapper, beatmap_id))
+
+    async def save_music_search_mapper(self, music_search_id: int, mapper_id: int):
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            await conn.execute('INSERT INTO music_search_mappers(music_search_id, mapper_id) '
+                               'VALUES ($1, $2) '
+                               'ON CONFLICT (mapper_id, music_search_id) DO NOTHING ',
+                               music_search_id, mapper_id)
+
+    async def is_music_saved(self, artist: str, title: str, length: float) -> Union[tuple[list[int], str], None]:
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            result: list[asyncpg.Record] = await conn.fetch('SELECT file_id, beatmap_id FROM music_search '
+                                                            'JOIN music_search_mappers msm '
+                                                            'ON music_search.id = msm.music_search_id '
+                                                            'JOIN mappers m '
+                                                            'ON m.id = msm.mapper_id '
+                                                            'WHERE artist=$1 '
+                                                            'AND title=$2 '
+                                                            'AND length=$3',
+                                                            artist, title, length)
+            beatmap_id_list = []
+            file_id = None
+            for data in result:
+                beatmap_id_list.append(data[1])
+                file_id = data[0]
+            return beatmap_id_list, file_id
+
+    async def add_music_token(self, word: str, beatmap_id: int):
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            await conn.execute('INSERT INTO music_tokens(word, beatmap_id) '
+                               'VALUES ($1, $2) '
+                               'ON CONFLICT DO NOTHING',
+                               word, beatmap_id)
+
+    async def get_all_search_music_data(self) -> list[MusicData]:
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            result: list[asyncpg.Record] = await conn.fetch('SELECT m.beatmap_id, file_id, artist, title, length, m.mapper '
+                                                            'FROM music_search '
+                                                            'JOIN music_search_mappers msm '
+                                                            'ON music_search.id = msm.music_search_id '
+                                                            'JOIN mappers m '
+                                                            'ON m.id = msm.mapper_id ')
+            music_data_list: list[MusicData] = []
+            for data in result:
+                music_data_list.append(MusicData(
+                    beatmap_id=data[0],
+                    file_id=data[1],
+                    artist=data[2],
+                    title=data[3],
+                    length=data[4],
+                    mapper=data[5]
+                ))
+            return music_data_list
 
     async def get_all_tg_id(self) -> list[int]:
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
