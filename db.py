@@ -163,7 +163,7 @@ class Db:
                 ))
             return music
 
-    async def find_music_by_id(self, beatmap_id: int) -> Optional[list[MusicData]]:
+    async def find_music_by_id(self, beatmap_id: int) -> Optional[MusicData]:
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
             result: asyncpg.Record = await conn.fetch("SELECT m.beatmap_id, file_id, artist, title, length, m.mapper "
                                                       "FROM music_search "
@@ -185,7 +185,7 @@ class Db:
                     length=song[4],
                     mapper=song[5],
                 ))
-            return music
+            return music[0]
 
     async def get_id_by_token(self, word: str) -> list[int]:
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection

@@ -6,8 +6,7 @@ from message_constructors.utils.utils import get_id_list
 
 
 async def search_constructor(args: str, cursor: int, db: Db) -> Optional[list[MusicData]]:
-    id_pattern = r'https://osu\.ppy\.sh/beatmapsets/([0-9]+)*'
-    match = re.match(id_pattern, args)
+    match = re.match(r'https://osu\.ppy\.sh/beatmapsets/([0-9]+)*', args)
     if match is not None:
         song = await db.find_music_by_id(int(match[1]))
         return song
@@ -26,5 +25,5 @@ async def search_constructor(args: str, cursor: int, db: Db) -> Optional[list[Mu
             if beatmap_id == song.beatmap_id:
                 in_music = True
         if not in_music:
-            [music.append(beatmap_id) for beatmap_id in await db.find_music_by_id(beatmap_id)]
+            music.append(await db.find_music_by_id(beatmap_id))
     return music
