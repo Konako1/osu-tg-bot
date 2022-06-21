@@ -1,6 +1,7 @@
 import asyncio
 import re
 from collections import Counter
+from pathlib import Path
 
 from PIL import Image
 from pyttanko import beatmap
@@ -154,6 +155,16 @@ async def get_id_list(args: str, db: Db) -> list[str]:
         id_list = await db.get_id_by_token(word)
         id_count.update(id_list)
     return [x[0] for x in id_count.most_common()]
+
+
+def get_edited_bpm(audio_file: Path, beatmap_file: Path):
+    edited_bpm = re.match(r'(?:.+?) ?([\d.]+(?:BPM|x|bpm)|[0-3]\.\d+)', audio_file.name)
+    if not edited_bpm:
+        edited_bpm = re.match(r'(?:.+) - (?:.+?) \(.+\) \[(?:(?:.*([01]\.[\d]{1,4}).*)|(\d{2,3}).*)\]\.osu',
+                              beatmap_file.name)
+        if not edited_bpm:
+            return None
+        return f'{edited_bpm[1]}x' if edited_bpm[1] else f'{edited_bpm[2]}bpm'
 
 
 # TODO: try to compress requests in one function
