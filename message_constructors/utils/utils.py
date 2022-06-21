@@ -147,8 +147,8 @@ async def get_saved_image(beatmap_id: int, img_link: str, request: Request) -> I
     return img
 
 
-async def get_id_list(args: str, db: Db) -> list[int]:
-    id_count: Counter[int, int] = Counter()
+async def get_id_list(args: str, db: Db) -> list[str]:
+    id_count: Counter[str, int] = Counter()
     divided_args = re.findall('([a-z0-9]*)', args, re.IGNORECASE)
     for word in divided_args:
         id_list = await db.get_id_by_token(word)

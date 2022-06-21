@@ -1,3 +1,5 @@
+from typing import Union
+
 from aiogram import Router, Bot
 from aiogram.dispatcher.filters import CommandObject
 from aiogram.dispatcher.filters.callback_data import CallbackData
@@ -5,7 +7,7 @@ from aiogram.types import Message, InlineKeyboardMarkup, CallbackQuery
 
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from db import Db, MusicData
+from db import Db, BeatmapData, MusicData
 from message_constructors.search_constructor import search_constructor
 
 router = Router()
@@ -17,7 +19,7 @@ class NextPage(CallbackData, prefix='next_page'):
 
 
 class Song(CallbackData, prefix='send_song'):
-    beatmap_id: int
+    file_id: str
 
 
 @router.message(commands=['search'])
@@ -29,14 +31,19 @@ async def search(message: Message, db: Db, command: CommandObject, bot: Bot):
     music = await search_constructor(args, 0, db)
 
     if music:
-        await message.reply('Songs found:', reply_markup=await create_music_buttons(music, args, 0))
+        await message.reply(
+            text=await create_message_text_beatmap(music)
+            if isinstance(music, BeatmapData)
+            else create_message_text_music(music, db),
+            reply_markup=await create_music_buttons(music, args, 0)
+        )
         await db.save_command_stat(message.date, 'search', message.from_user.id)
         return
     else:
         return message.reply('Track not found :(')
 
 
-async def create_music_buttons(music: list[MusicData], args: str, cursor: int) -> InlineKeyboardMarkup:
+async def create_music_buttons(music: list[Union[BeatmapData, MusicData]], args: str, cursor: int) -> InlineKeyboardMarkup:
     x = InlineKeyboardBuilder()
 
     if cursor >= 1:
@@ -48,8 +55,8 @@ async def create_music_buttons(music: list[MusicData], args: str, cursor: int) -
         if i == 10:
             break
         x.button(
-            text=f'{song.artist} - {song.title} | by {song.mapper} | {song.length//60}:{song.length%60}m',
-            callback_data=Song(beatmap_id=song.beatmap_id))
+            text=f'{i+1}. {song.artist} - {song.title}',
+            callback_data=Song(file_id=song.file_id))
     if len(music) == 11:
         x.button(
             text='➡️➡️➡️',
@@ -59,13 +66,30 @@ async def create_music_buttons(music: list[MusicData], args: str, cursor: int) -
     return x.as_markup()
 
 
+async def create_message_text_beatmap(song: BeatmapData) -> str:
+    text = 'Songs found:' \
+           f'\n1. <b>{song.artist}</b> - <b>{song.title}</b> | by {song.mapper} | <b>{song.length // 60}:{song.length % 60}m</b>'
+    return text
+
+
+async def create_message_text_music(music: list[MusicData], db: Db) -> str:
+    text = 'Songs found:'
+    for i, song in enumerate(music):
+        mappers, _ = await db.find_beatmaps_by_music_id(song.music_id)
+        text += f'\n{i+1}. <b>{song.artist}</b> - <b>{song.title}</b> | by {str([f"<b>{mapper}</b>, " for mapper in mappers]).rstrip(", ")} | <b>{song.length//60}:{song.length%60}m</b>'
+    return text
+
+
 @router.callback_query(Song.filter())
 async def send_song(query: CallbackQuery, db: Db, callback_data: Song):
     await query.answer()
-    beatmap_id = callback_data.beatmap_id
-    music = await db.find_music_by_id(beatmap_id)
-    for song in music:
-        await query.message.reply_audio(song.file_id, f'https://osu.ppy.sh/beatmapsets/{beatmap_id}')
+    file_id = callback_data.file_id
+    song = await db.find_music_by_file_id(file_id)
+    mappers, beatmap_ids = await db.find_beatmaps_by_music_id(song.music_id)
+    text = ''
+    for mapper, beatmap_id in zip(mappers, beatmap_ids):
+        text += f'https://osu.ppy.sh/beatmapsets/{beatmap_id} by {mapper}'
+    await query.message.reply_audio(song.file_id, text)
 
 
 @router.callback_query(NextPage.filter())
