@@ -11,6 +11,8 @@ from handlers import recent_handler, top_five_handler, profile_handler, remember
     stat_handler, search_handler
 from config import TG_TOKEN, DB_NAME, DB_HOST, DB_USER, DB_PASSWORD
 from request import create_request
+from traceback import format_exc
+import logging
 
 dp = Dispatcher()
 
@@ -18,8 +20,10 @@ dp = Dispatcher()
 @dp.errors()
 async def errors_handler(update: Update, exception: Exception, bot: Bot):
     message = f'While handling <code>{update.message.text}</code> an error occurred:\n' \
-              f'<b>{exception.__class__.__name__}</b>: <code>{html.escape(str(exception))}</code>'
+              f'<b>{exception.__class__.__name__}</b>: <code>{html.escape(format_exc(exception))}</code>' \
+              f'\n\nIn chat: <code>{update.message.chat.id}</code>'
     await bot.send_message(REPORT_CHAT_ID, message)
+    logging.exception('АШЫБКА!!!!!!!!!!!!!', exc_info=exception)
 
 
 @dp.startup()
