@@ -20,7 +20,7 @@ dp = Dispatcher()
 @dp.errors()
 async def errors_handler(update: Update, exception: Exception, bot: Bot):
     message = f'While handling <code>{update.message.text}</code> an error occurred:\n' \
-              f'<b>{exception.__class__.__name__}</b>: <code>{html.escape(format_exc(exception))}</code>' \
+              f'<b>{exception.__class__.__name__}</b>: <code>{html.escape(format_exc())}</code>' \
               f'\n\nIn chat: <code>{update.message.chat.id}</code>'
     await bot.send_message(REPORT_CHAT_ID, message)
     logging.exception('АШЫБКА!!!!!!!!!!!!!', exc_info=exception)
