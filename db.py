@@ -7,6 +7,7 @@ import asyncpg
 
 @dataclass
 class BeatmapData:
+    music_id: int
     beatmap_id: int
     file_id: str
     title: str
@@ -186,7 +187,7 @@ class Db:
 
     async def find_music_by_beatmap_id(self, beatmap_id: int) -> Optional[list[BeatmapData]]:
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
-            result: asyncpg.Record = await conn.fetch("SELECT file_id, artist, title, length, m.mapper "
+            result: asyncpg.Record = await conn.fetch("SELECT file_id, artist, title, length, m.mapper, music.id "
                                                       "FROM music "
                                                       "JOIN music_mappers mm "
                                                       "ON mm.music_id = music.id "
@@ -199,12 +200,14 @@ class Db:
             beatmap_datas = []
             for data in result:
                 beatmap_datas.append(BeatmapData(
+                    music_id=data[5],
                     beatmap_id=beatmap_id,
-                    file_id=result[0],
-                    artist=result[1],
-                    title=result[2],
-                    length=result[3],
-                    mapper=result[4]))
+                    file_id=data[0],
+                    artist=data[1],
+                    title=data[2],
+                    length=data[3],
+                    mapper=data[4]))
+            return beatmap_datas
 
     async def find_beatmaps_by_music_id(self, music_id: int) -> tuple[list[str], list[int]]:
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
@@ -216,9 +219,9 @@ class Db:
                                                             music_id)
             mappers = []
             beatmap_ids = []
-            for mapper in result:
+            for mapper, beatmap_id in result:
                 mappers.append(mapper)
-                beatmap_ids.append(beatmap_ids)
+                beatmap_ids.append(beatmap_id)
             return mappers, beatmap_ids
 
     async def get_id_by_token(self, word: str) -> list[str]:
@@ -231,6 +234,13 @@ class Db:
             for file_id in result:
                 id_list.append(file_id[0])
             return id_list
+
+    async def get_file_id_by_music_id(self, music_id: int) -> str:
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            return await conn.fetchval('SELECT file_id '
+                                       'FROM music '
+                                       'WHERE id=$1',
+                                       music_id)
 
     async def save_command_stat(self, message_date: datetime, command: str, tg_user_id: int) -> None:
         """
@@ -336,7 +346,7 @@ class Db:
 
     async def get_all_search_music_data(self) -> list[BeatmapData]:
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
-            result: list[asyncpg.Record] = await conn.fetch('SELECT m.beatmap_id, file_id, artist, title, length, m.mapper '
+            result: list[asyncpg.Record] = await conn.fetch('SELECT m.beatmap_id, file_id, artist, title, length, m.mapper, music.id '
                                                             'FROM music '
                                                             'JOIN music_mappers msm '
                                                             'ON music.id = msm.music_id '
@@ -350,7 +360,8 @@ class Db:
                     artist=data[2],
                     title=data[3],
                     length=data[4],
-                    mapper=data[5]
+                    mapper=data[5],
+                    music_id=data[6]
                 ))
             return music_data_list
 

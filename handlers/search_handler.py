@@ -19,7 +19,7 @@ class NextPage(CallbackData, prefix='next_page'):
 
 
 class Song(CallbackData, prefix='send_song'):
-    file_id: str
+    music_id: int
 
 
 @router.message(commands=['search'])
@@ -34,7 +34,7 @@ async def search(message: Message, db: Db, command: CommandObject, bot: Bot):
         await message.reply(
             text=await create_message_text_beatmap(music)
             if isinstance(music[0], BeatmapData)
-            else create_message_text_music(music, db),
+            else await create_message_text_music(music, db),
             reply_markup=await create_music_buttons(music, args, 0)
         )
         await db.save_command_stat(message.date, 'search', message.from_user.id)
@@ -57,7 +57,7 @@ async def create_music_buttons(music: list[Union[BeatmapData, MusicData]], args:
             break
         x.button(
             text=f'{i + 1}. {song.artist} - {song.title}',
-            callback_data=Song(file_id=song.file_id))
+            callback_data=Song(music_id=song.music_id))
     if len(music) == 11:
         x.button(
             text='➡️➡️➡️',
@@ -78,20 +78,20 @@ async def create_message_text_music(music: list[MusicData], db: Db) -> str:
     text = 'Songs found:'
     for i, song in enumerate(music):
         mappers, _ = await db.find_beatmaps_by_music_id(song.music_id)
-        text += f'\n{i + 1}. <b>{song.artist}</b> - <b>{song.title}</b> | by {str([f"<b>{mapper}</b>, " for mapper in mappers]).rstrip(", ")} | <b>{song.length // 60}:{song.length % 60}m</b>'
+        text += f'\n{i + 1}. <b>{song.artist}</b> - <b>{song.title}</b> | by {", ".join(f"<b>{mapper}</b>" for mapper in mappers)} | <b>{song.length // 60}:{song.length % 60}m</b>'
     return text
 
 
 @router.callback_query(Song.filter())
 async def send_song(query: CallbackQuery, db: Db, callback_data: Song):
     await query.answer()
-    file_id = callback_data.file_id
-    song = await db.find_music_by_file_id(file_id)
-    mappers, beatmap_ids = await db.find_beatmaps_by_music_id(song.music_id)
+    music_id = callback_data.music_id
+    file_id = await db.get_file_id_by_music_id(music_id)
+    mappers, beatmap_ids = await db.find_beatmaps_by_music_id(music_id)
     text = ''
     for mapper, beatmap_id in zip(mappers, beatmap_ids):
         text += f'https://osu.ppy.sh/beatmapsets/{beatmap_id} by {mapper}'
-    await query.message.reply_audio(song.file_id, text)
+    await query.message.reply_audio(file_id, text)
 
 
 @router.callback_query(NextPage.filter())
