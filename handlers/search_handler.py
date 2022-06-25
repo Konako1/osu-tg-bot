@@ -33,7 +33,7 @@ async def search(message: Message, db: Db, command: CommandObject, bot: Bot):
     if music:
         await message.reply(
             text=await create_message_text_beatmap(music)
-            if isinstance(music, BeatmapData)
+            if isinstance(music[0], BeatmapData)
             else create_message_text_music(music, db),
             reply_markup=await create_music_buttons(music, args, 0)
         )
@@ -43,32 +43,34 @@ async def search(message: Message, db: Db, command: CommandObject, bot: Bot):
         return message.reply('Track not found :(')
 
 
-async def create_music_buttons(music: list[Union[BeatmapData, MusicData]], args: str, cursor: int) -> InlineKeyboardMarkup:
+async def create_music_buttons(music: list[Union[BeatmapData, MusicData]], args: str,
+                               cursor: int) -> InlineKeyboardMarkup:
     x = InlineKeyboardBuilder()
 
     if cursor >= 1:
         x.button(
             text='⬅️⬅️⬅️',
-            callback_data=NextPage(cursor=cursor-1, query=args)
+            callback_data=NextPage(cursor=cursor - 1, query=args)
         )
     for i, song in enumerate(music):
         if i == 10:
             break
         x.button(
-            text=f'{i+1}. {song.artist} - {song.title}',
+            text=f'{i + 1}. {song.artist} - {song.title}',
             callback_data=Song(file_id=song.file_id))
     if len(music) == 11:
         x.button(
             text='➡️➡️➡️',
-            callback_data=NextPage(cursor=cursor+1, query=args)
+            callback_data=NextPage(cursor=cursor + 1, query=args)
         )
     x.adjust(1, repeat=True)
     return x.as_markup()
 
 
-async def create_message_text_beatmap(song: BeatmapData) -> str:
-    text = 'Songs found:' \
-           f'\n1. <b>{song.artist}</b> - <b>{song.title}</b> | by {song.mapper} | <b>{song.length // 60}:{song.length % 60}m</b>'
+async def create_message_text_beatmap(music: list[BeatmapData]) -> str:
+    text = 'Songs found:'
+    for i, song in enumerate(music):
+        text += f'\n{i+1}. <b>{song.artist}</b> - <b>{song.title}</b> | by {song.mapper} | <b>{song.length // 60}:{song.length % 60}m</b>'
     return text
 
 
@@ -76,7 +78,7 @@ async def create_message_text_music(music: list[MusicData], db: Db) -> str:
     text = 'Songs found:'
     for i, song in enumerate(music):
         mappers, _ = await db.find_beatmaps_by_music_id(song.music_id)
-        text += f'\n{i+1}. <b>{song.artist}</b> - <b>{song.title}</b> | by {str([f"<b>{mapper}</b>, " for mapper in mappers]).rstrip(", ")} | <b>{song.length//60}:{song.length%60}m</b>'
+        text += f'\n{i + 1}. <b>{song.artist}</b> - <b>{song.title}</b> | by {str([f"<b>{mapper}</b>, " for mapper in mappers]).rstrip(", ")} | <b>{song.length // 60}:{song.length % 60}m</b>'
     return text
 
 

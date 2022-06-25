@@ -171,11 +171,11 @@ class Db:
 
     async def find_music_by_file_id(self, file_id: str) -> Optional[MusicData]:
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
-            result: asyncpg.Record = await conn.fetch("SELECT id, file_id, artist, title, length "
-                                                      "FROM music "
-                                                      "WHERE file_id=$1",
-                                                      file_id)
-            if result is None:
+            result: list[asyncpg.Record] = await conn.fetch("SELECT id, file_id, artist, title, length "
+                                                            "FROM music "
+                                                            "WHERE file_id=$1",
+                                                            file_id)
+            if not result:
                 return None
             return MusicData(
                 music_id=result[0],
@@ -184,7 +184,7 @@ class Db:
                 title=result[3],
                 length=result[4],)
 
-    async def find_music_by_beatmap_id(self, beatmap_id: int) -> Optional[BeatmapData]:
+    async def find_music_by_beatmap_id(self, beatmap_id: int) -> Optional[list[BeatmapData]]:
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
             result: asyncpg.Record = await conn.fetch("SELECT file_id, artist, title, length, m.mapper "
                                                       "FROM music "
@@ -194,15 +194,17 @@ class Db:
                                                       "ON m.id = mm.mapper_id "
                                                       "WHERE m.beatmap_id=$1",
                                                       beatmap_id)
-            if result is None:
+            if not result:
                 return None
-            return BeatmapData(
-                beatmap_id=beatmap_id,
-                file_id=result[0],
-                artist=result[1],
-                title=result[2],
-                length=result[3],
-                mapper=result[4])
+            beatmap_datas = []
+            for data in result:
+                beatmap_datas.append(BeatmapData(
+                    beatmap_id=beatmap_id,
+                    file_id=result[0],
+                    artist=result[1],
+                    title=result[2],
+                    length=result[3],
+                    mapper=result[4]))
 
     async def find_beatmaps_by_music_id(self, music_id: int) -> tuple[list[str], list[int]]:
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection

@@ -5,11 +5,11 @@ from db import BeatmapData, Db, MusicData
 from message_constructors.utils.utils import get_id_list
 
 
-async def search_constructor(args: str, cursor: int, db: Db) -> Union[BeatmapData, list[MusicData], None]:
+async def search_constructor(args: str, cursor: int, db: Db) -> Union[list[BeatmapData], list[MusicData], None]:
     match = re.match(r'https://osu\.ppy\.sh/beatmapsets/([0-9]+)*', args)
     if match is not None:
-        song = await db.find_music_by_beatmap_id(int(match[1]))
-        return song
+        songs = await db.find_music_by_beatmap_id(int(match[1]))
+        return songs
 
     music: list[MusicData] = []
     music.extend(await db.find_music(args, cursor))
