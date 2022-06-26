@@ -2,12 +2,12 @@ from datetime import datetime
 from html import escape
 from typing import Iterator
 
+from aiogram.dispatcher.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from api_model.beatmap import BeatmapData
 from api_model.user_data import UserData
-from handlers.recent_handler import Stat
 from message_constructors.score_info_constructors import get_score_as_text_full
 from message_constructors.utils.osu_calculators import get_expanded_beatmap_file, get_converted_star_rating, \
     get_pp_flexible
@@ -15,6 +15,11 @@ from message_constructors.utils.utils import build_flag, build_user_url, parse_m
     parse_score_rank, build_completed_percentage_line, get_pp_line, is_star_rating_right, build_position_line
 from model.score import Score
 import humanize
+
+
+class Stat(CallbackData, prefix='stat'):
+    score_id: int
+    is_stat: bool
 
 
 def get_message_text(

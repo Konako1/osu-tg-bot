@@ -1,23 +1,17 @@
 from aiogram import Router, Bot
 from aiogram.dispatcher.filters import CommandObject
-from aiogram.dispatcher.filters.callback_data import CallbackData
 from aiogram.types import Message, FSInputFile, CallbackQuery
 from httpx import HTTPStatusError
 from httpx import ReadTimeout
 
 from db import Db
 from message_constructors.recent_constructor import recent_message_constructor, create_stat_button, \
-    recent_message_stat_constructor
+    recent_message_stat_constructor, Stat
 from message_constructors.utils.cache_check import get_osu_id_by_username, get_osu_file
 from message_constructors.utils.class_constructor import create_user_data_class, get_scores, create_score_class
 from request import Request
 
 router = Router()
-
-
-class Stat(CallbackData, prefix='stat'):
-    score_id: int
-    is_stat: bool
 
 
 @router.message(commands=['recent'])
