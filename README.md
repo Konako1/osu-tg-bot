@@ -1,4 +1,4 @@
-# osu-tg-bot
+# osu-tg-bot v0.5.1
 This is a <a href="https://t.me/retardedosubot">Telegram osu! bot</a> (Rewritten <a href="https://github.com/Konako1/old-osu-tg-bot">old osu! bot</a>)
 
 <h1>Features</h1>
