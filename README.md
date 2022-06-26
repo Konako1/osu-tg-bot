@@ -6,6 +6,7 @@ This is a <a href="https://t.me/retardedosubot">Telegram osu! bot</a> (Rewritten
 - Shows user's recent play
 - Shows user's best five plays
 - Shows user's profile 
+- Search music from osu! (my Songs folder)
 
 <h1>How to use</h1>
 
