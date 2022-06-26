@@ -5,3 +5,7 @@ humanize~=3.14.0
 Pillow~=9.0.1
 pydantic~=1.9.0
 pyttanko~=2.1.0
+
+mutagen~=1.45.1
+pydub~=0.25.1
+tinytag~=1.8.1

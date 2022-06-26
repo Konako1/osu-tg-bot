@@ -15,6 +15,7 @@ class BeatmapData(BaseModel):
     cs: float
     hp: Annotated[float, Field(alias='drain')]
     max_combo: int
+    total_length: int
     stars: Annotated[float, Field(alias='difficulty_rating')]
     bpm: float
     count_circles: int
