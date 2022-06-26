@@ -7,7 +7,6 @@ from pyttanko import beatmap
 
 from api_model.base_score import Statistics
 from api_model.beatmap import BeatmapData
-from model.score import Score
 
 pyttanko_parser = pyttanko.parser()
 
@@ -56,3 +55,21 @@ def get_pp_for_score(
     else:
         score_pp = pp
     return score_pp, fc_pp, ss_pp
+
+
+def get_pp_flexible(
+        accuracy: float,
+        mods: list[str],
+        beatmap_data: BeatmapData,
+        star_rating,
+        expanded_beatmap_file: beatmap
+) -> float:
+    mods_calc = recalculate_mods(mods)
+    objects = beatmap_data.count_circles + beatmap_data.count_sliders + beatmap_data.count_spinners
+    fail_acc = pyttanko.acc_round(round(accuracy * 100), objects, 0)
+    pp, *_ = pyttanko.ppv2(star_rating.aim, star_rating.speed, mods=mods_calc, bmap=expanded_beatmap_file,
+                           n300=fail_acc[0],
+                           n100=fail_acc[1],
+                           n50=fail_acc[2],
+                           nmiss=0)
+    return pp

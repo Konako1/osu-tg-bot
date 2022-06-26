@@ -1,16 +1,23 @@
 from aiogram import Router, Bot
 from aiogram.dispatcher.filters import CommandObject
-from aiogram.types import Message, FSInputFile
+from aiogram.dispatcher.filters.callback_data import CallbackData
+from aiogram.types import Message, FSInputFile, CallbackQuery
 from httpx import HTTPStatusError
 from httpx import ReadTimeout
 
 from db import Db
-from message_constructors.recent_constructor import recent_message_constructor
+from message_constructors.recent_constructor import recent_message_constructor, create_stat_button, \
+    recent_message_stat_constructor
 from message_constructors.utils.cache_check import get_osu_id_by_username, get_osu_file
 from message_constructors.utils.class_constructor import create_user_data_class, get_scores, create_score_class
 from request import Request
 
 router = Router()
+
+
+class Stat(CallbackData, prefix='stat'):
+    score_id: int
+    is_stat: bool
 
 
 @router.message(commands=['recent'])
@@ -42,8 +49,22 @@ async def recent(message: Message, request: Request, db: Db, command: CommandObj
     if await request.get_status_code(photo) >= 300:
         photo = FSInputFile('images/osu_bg.png')
 
-    msg = recent_message_constructor(score, user_data, message.date, osu_file)
-    await message.reply_photo(photo, msg)
+    score_msg = recent_message_constructor(score, user_data, message.date, osu_file)
+    osu_file.seek(0)
+    stat_msg = recent_message_stat_constructor(score, osu_file)
+    score_id = await db.add_score_stat(score_msg, stat_msg)
+    button = create_stat_button(score_id, 'Statistics', False)
+    await message.reply_photo(photo, score_msg, reply_markup=button)
     await db.save_command_stat(message.date, 'recent', message.from_user.id)
 
     osu_file.close()
+
+
+@router.callback_query(Stat.filter())
+async def change_page(query: CallbackQuery, db: Db, callback_data: Stat):
+    await query.answer()
+    score_id = callback_data.score_id
+    is_stat = callback_data.is_stat
+    button_text = 'Statistics' if is_stat else 'Score'
+    result = await db.get_score_stat(not is_stat, score_id)
+    await query.message.edit_caption(result, reply_markup=create_stat_button(score_id, button_text, not is_stat))

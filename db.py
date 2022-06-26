@@ -144,6 +144,24 @@ class Db:
                                        'WHERE score_id=$1',
                                        score_id)
 
+    async def add_score_stat(self, score: str, stat: str, is_stat: bool = False) -> int:
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            return await conn.fetchval('INSERT INTO score_stat (score, stat, is_stat) '
+                                       'VALUES ($1, $2, $3) '
+                                       'RETURNING id',
+                                       score, stat, is_stat)
+
+    async def get_score_stat(self, is_stat: bool, score_id: int) -> str:
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            return await conn.fetchval('UPDATE score_stat '
+                                       'SET is_stat=$1 '
+                                       'WHERE id=$2 '
+                                       'RETURNING '
+                                       'CASE WHEN $1 = FALSE THEN score '
+                                       'ELSE stat '
+                                       'END',
+                                       is_stat, score_id)
+
     async def find_music(self, value: str, cursor: int) -> list[MusicData]:
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
             result: list[asyncpg.Record] = await conn.fetch("SELECT music.id, file_id, artist, title, length "
