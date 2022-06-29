@@ -106,7 +106,9 @@ class Db:
         """
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
             await conn.execute('INSERT INTO beatmap_data(map_id, data, last_updated) '
-                               'VALUES ($1, $2, $3)',
+                               'VALUES ($1, $2, $3) '
+                               'ON CONFLICT (map_id) '
+                               'DO UPDATE SET map_id=$1, data=$2',
                                map_id, beatmap_data, last_updated)
 
     async def get_beatmap_data(self, map_id: int) -> Optional[tuple[str, datetime]]:

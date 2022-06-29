@@ -1,10 +1,10 @@
 from datetime import datetime
 from io import BytesIO
-from pprint import pprint
 from typing import Optional, TextIO
 
 from PIL import Image
 from httpx import HTTPStatusError
+from pydantic import ValidationError
 
 from api_model.beatmap import BeatmapData
 from db import Db
@@ -65,7 +65,12 @@ async def get_beatmap_data(beatmap_id: int, actual_last_updated: datetime, db: D
         beatmap_data = BeatmapData.parse_obj(raw_beatmap_data)
         await db.cache_beatmap_data(beatmap_id, beatmap_data.json(by_alias=True), actual_last_updated)
     else:
-        beatmap_data = BeatmapData.parse_raw(saved_beatmap_data)
+        try:
+            beatmap_data = BeatmapData.parse_raw(saved_beatmap_data)
+        except ValidationError as e:
+            raw_beatmap_data = await request.get_beatmap(beatmap_id)
+            beatmap_data = BeatmapData.parse_obj(raw_beatmap_data)
+            await db.cache_beatmap_data(beatmap_id, beatmap_data.json(by_alias=True), actual_last_updated)
     return beatmap_data
 
 
