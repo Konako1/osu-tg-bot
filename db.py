@@ -364,6 +364,12 @@ class Db:
                                'ON CONFLICT DO NOTHING',
                                word, file_id)
 
+    async def delete_music_tokens_by_file_id(self, file_id: str):
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            await conn.execute('DELETE FROM music_tokens '
+                               'WHERE file_id=$1',
+                               file_id)
+
     async def get_all_search_music_data(self) -> list[BeatmapData]:
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection
             result: list[asyncpg.Record] = await conn.fetch('SELECT m.beatmap_id, file_id, artist, title, length, m.mapper, music.id '
@@ -384,6 +390,29 @@ class Db:
                     music_id=data[6]
                 ))
             return music_data_list
+
+    async def get_similar_music_title(self, artist: str, title: str, length: int) -> Union[tuple[str, int, str, int], tuple[bool, None, None, None]]:
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            result: Optional[asyncpg.Record] = await conn.fetchrow('SELECT title, music.id, file_id, m.beatmap_id '
+                                                                   'FROM music '
+                                                                   'JOIN music_mappers mm '
+                                                                   'ON music.id = mm.music_id '
+                                                                   'JOIN mappers m '
+                                                                   'ON m.id = mm.mapper_id '
+                                                                   'WHERE artist=$1 '
+                                                                   'AND length=$2 '
+                                                                   r"AND regexp_replace(title, ' (\d{2,3}bpm|[01]\.\d+x)$', '')=$3",
+                                                                   artist, length, title)
+            if result is None:
+                return False, None, None, None
+            return result[0], result[1], result[2], result[3]
+
+    async def update_wrong_song(self, music_id: int, title: str, file_id: str, is_bpm_changed: bool) -> None:
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            await conn.execute('UPDATE music '
+                               'SET title=$1, file_id=$2, is_bpm_changed=$3 '
+                               'WHERE id=$4',
+                               title, file_id, is_bpm_changed, music_id,)
 
     async def get_all_tg_id(self) -> list[int]:
         async with self._pool.acquire() as conn:  # type: asyncpg.Connection

@@ -157,14 +157,29 @@ async def get_id_list(args: str, db: Db) -> list[str]:
     return [x[0] for x in id_count.most_common()]
 
 
-def get_edited_bpm(audio_file: Path, beatmap_file: Path):
-    edited_bpm = re.match(r'(?:.+?) ?([\d.]+(?:BPM|x|bpm)|[0-3]\.\d+)', audio_file.name)
-    if not edited_bpm:
-        edited_bpm = re.match(r'(?:.+) - (?:.+?) \(.+\) \[(?:(?:.*([01]\.[\d]{1,4}).*)|(\d{2,3}).*)\]\.osu',
-                              beatmap_file.name)
-        if not edited_bpm:
-            return None
-        return f'{edited_bpm[1]}x' if edited_bpm[1] else f'{edited_bpm[2]}bpm'
+def get_edited_bpm(beatmap_file: Path, diffname_exceptions: list[str]):
+    e = re.match(
+        r'(?:.+) - (?:.+?) \(.+\) \[('
+        r'.*\D([01]\.[\d]{1,4}).*|'
+        r'([01]\.[1-5])|'
+        r'.*(\d{3})(?:\.\d+) ?(?:bpm|BPM).*|'
+        r'.*(\d{2})(?:\.\d+) ?(?:bpm|BPM).*|'
+        r'.*\D(\d{3}) ?(?:bpm|BPM).*|'
+        r'.*(?:bpm|BPM) ?(\d{3}).*|'
+        r'(\d{3})|'
+        r'.*\D(\d{3})|'
+        r'(\d{3})\D.*'
+        r')\]\.osu',  # fucked up regex
+        beatmap_file.name)
+    if not e:
+        return None
+    if e[1] in diffname_exceptions:
+        return None
+    if e[2] or e[3]:
+        return f'{e[2] if e[2] else e[3]}x'
+    for i, match in enumerate(e.groups()):
+        if i != 0 and match:
+            return f'{match}bpm'
 
 
 # TODO: try to compress requests in one function
