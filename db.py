@@ -33,6 +33,14 @@ class CommandStat:
     tg_user_id: int
 
 
+@dataclass
+class TrackingInfo:
+    chat_id: int
+    user_id: int
+    score_id: int
+    filter: str
+
+
 class Db:
     def __init__(self, pool: asyncpg.Pool):
         self._pool = pool
@@ -392,3 +400,45 @@ class Db:
             for tg_id in result:
                 list_id.append(tg_id[0])
             return list_id
+
+#  tracking scores command
+    async def update_score_tracking(self, chat_id: int, user_id: int, track_filter: str, score_id: int):
+        """
+        Updates or inserts score id and track filters by telegram id and osu user id.
+
+        :param chat_id: Telegram chat id.
+        :param user_id: Osu user id.
+        :param track_filter: Filters which will be applied to score data.
+        :param score_id: Osu score id.
+        """
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            await conn.execute('INSERT INTO score_tracking(chat_id, user_id, track_filter, score_id) '
+                               'VALUES ($1, $2, $3, $4) '
+                               'ON CONFLICT (chat_id, user_id) '
+                               'DO UPDATE SET score_id=$4',
+                               chat_id, user_id, track_filter, score_id)
+
+    async def get_tracking_info(self, chat_id: int, user_id: int) -> Optional[tuple[int, str]]:
+        """
+        Returns saved score id and filters.
+        """
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            result: Optional[asyncpg.Record] = await conn.fetchrow('SELECT score_id, track_filter FROM score_tracking '
+                                                                   'WHERE chat_id=$1 AND user_id=$2',
+                                                                   chat_id, user_id)
+            if result is None:
+                return None
+            return result[0], result[1]
+
+    async def get_all_users_tracking_info(self) -> list[TrackingInfo]:
+        async with self._pool.acquire() as conn:  # type: asyncpg.Connection
+            result: list[asyncpg.Record] = await conn.fetch('SELECT * FROM score_tracking')
+            tracking_list = []
+            for track in result:
+                tracking_list.append(TrackingInfo(
+                    chat_id=track[0],
+                    user_id=track[1],
+                    score_id=track[2],
+                    filter=track[3]
+                ))
+            return tracking_list

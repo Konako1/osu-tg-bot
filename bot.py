@@ -47,6 +47,8 @@ async def main():
     dp.include_router(search_handler.router)
     dp.include_router(start_handler.router)
     dp.include_router(stat_handler.router)
+    # dp.include_router(track_handler.router)
+    # create_task(track_scores(db, await create_request(), bot))
     await dp.start_polling(bot, request=await create_request(), db=db)
 
 
