@@ -7,15 +7,17 @@ from httpx import ReadTimeout
 from db import Db
 from message_constructors.recent_constructor import recent_message_constructor, create_stat_button, \
     recent_message_stat_constructor, Stat
-from message_constructors.utils.cache_check import get_osu_id_by_username, get_osu_file
+from message_constructors.utils.cache_check import get_osu_id_by_username
 from message_constructors.utils.class_constructor import create_user_data_class, get_scores, create_score_class
-from request import Request
+from message_constructors.utils.osu_calculators import performance_list_request, pp_request_flexible
+from requests.osu_request import OsuRequest
+from requests.osu_tools_request import OsuToolsRequest
 
 router = Router()
 
 
 @router.message(commands=['recent'])
-async def recent(message: Message, request: Request, db: Db, command: CommandObject, bot: Bot):
+async def recent(message: Message, request: OsuRequest, osu_tools_request: OsuToolsRequest, db: Db, command: CommandObject, bot: Bot):
     await bot.send_chat_action(message.chat.id, 'upload_voice')
     username = command.args
     user_id = await get_osu_id_by_username(username, db, request, message.from_user.id)
@@ -28,7 +30,6 @@ async def recent(message: Message, request: Request, db: Db, command: CommandObj
     try:
         scores = await get_scores(user_id, request, 'recent', 1)
         score = await create_score_class(scores[0], request, db)
-        osu_file = await get_osu_file(score.beatmap.id, score.beatmap.last_updated, request)
         user_data = await create_user_data_class(user_id, request)
     except ReadTimeout:
         return message.reply('Bancho is dead.')
@@ -43,15 +44,14 @@ async def recent(message: Message, request: Request, db: Db, command: CommandObj
     if await request.get_status_code(photo) >= 300:
         photo = FSInputFile('images/osu_bg.png')
 
-    score_msg = recent_message_constructor(score, user_data, message.date, osu_file)
-    osu_file.seek(0)
-    stat_msg = recent_message_stat_constructor(score, osu_file)
+    performance_list = await performance_list_request(score, osu_tools_request)
+    score_msg = recent_message_constructor(score, performance_list, user_data, message.date)
+    performance_list_stat = await pp_request_flexible(score.beatmap.id, score, osu_tools_request)
+    stat_msg = recent_message_stat_constructor(score, performance_list_stat)
     score_id = await db.add_score_stat(score_msg, stat_msg)
     button = create_stat_button(score_id, 'Statistics', False)
     await message.reply_photo(photo, score_msg, reply_markup=button)
     await db.save_command_stat(message.date, 'recent', message.from_user.id)
-
-    osu_file.close()
 
 
 @router.callback_query(Stat.filter())

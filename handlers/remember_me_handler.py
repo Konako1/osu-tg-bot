@@ -4,13 +4,13 @@ from aiogram.types import Message
 
 from db import Db
 from message_constructors.utils.cache_check import bind_osu_id_with_tg_id
-from request import Request
+from requests.osu_request import OsuRequest
 
 router = Router()
 
 
 @router.message(commands=['remember_me'])
-async def remember_me_handler(message: Message, request: Request, db: Db, command: CommandObject):
+async def remember_me_handler(message: Message, request: OsuRequest, db: Db, command: CommandObject):
     username = command.args
     if username is None:
         return message.reply('You forgot to write a nickname to remember.')

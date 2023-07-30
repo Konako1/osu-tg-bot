@@ -1,18 +1,14 @@
 from datetime import datetime
 from html import escape
-from typing import Iterator
-
 from aiogram.dispatcher.filters.callback_data import CallbackData
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
 from api_model.beatmap import BeatmapData
 from api_model.user_data import UserData
 from message_constructors.score_info_constructors import get_score_as_text_full
-from message_constructors.utils.osu_calculators import get_expanded_beatmap_file, get_converted_star_rating, \
-    get_pp_flexible
 from message_constructors.utils.utils import build_flag, build_user_url, parse_mods, build_combo_line, build_miss_line, \
-    parse_score_rank, build_completed_percentage_line, get_pp_line, is_star_rating_right, build_position_line
+    parse_score_rank, build_completed_percentage_line, get_pp_line, build_position_line
+from model.performance import PerformanceList, PerformanceListStat
 from model.score import Score
 import humanize
 
@@ -75,14 +71,14 @@ def get_stat_message_text(
     return f"Statistic for <a href='{link}'>{escape(artist)} - {escape(title)} " \
            f"[{escape(difficulty_name)}] by {escape(creator)}</a>\n\n" \
            f"<b>Beatmap data:</b>\n" \
-           f"{round(bpm)} bpm | {round(stars, 2)}★ | Length: {length // 60}:{length%60}\n" \
+           f"{round(bpm)} bpm | {stars}★ | Length: {length // 60}:{length%60}\n" \
            f"Circles: {beatmap_data.count_circles} | Sliders: {beatmap_data.count_sliders} | Spinners: {beatmap_data.count_spinners}\n" \
            f"AR: {beatmap_data.ar}\nOD: {beatmap_data.od}\nCS: {beatmap_data.cs}\nHP: {beatmap_data.hp}\n\n" \
            f"<b>PP data:</b>\n" \
            f"{pp_line}"
 
 
-def recent_message_constructor(score: Score, user: UserData, message_date: datetime, osu_file: Iterator[str]) -> str:
+def recent_message_constructor(score: Score, performance_list: PerformanceList, user: UserData, message_date: datetime) -> str:
     flag = build_flag(user.country_code)
     user_url = build_user_url(score.user_id)
     score_time = humanize.naturaltime(message_date - score.created_at)
@@ -91,13 +87,9 @@ def recent_message_constructor(score: Score, user: UserData, message_date: datet
     miss_line = build_miss_line(score.statistics.count_miss)
     position_line = build_position_line(score.position)
     parsed_rank = parse_score_rank(score.rank)
-    expanded_beatmap_file = get_expanded_beatmap_file(osu_file)
-    stars = get_converted_star_rating(score.mods, expanded_beatmap_file)
-    star_rating = score.beatmap_data.stars \
-        if is_star_rating_right(mods) \
-        else stars.total
+    star_rating = performance_list.base.star_rating
     completed_line = build_completed_percentage_line(score.statistics, score.beatmap_data)
-    pp_line = get_pp_line(score, parsed_rank, stars, expanded_beatmap_file)
+    pp_line = get_pp_line(score.perfect, parsed_rank, performance_list)
     message = get_message_text(
         score,
         star_rating,
@@ -117,20 +109,12 @@ def recent_message_constructor(score: Score, user: UserData, message_date: datet
     return message
 
 
-def recent_message_stat_constructor(score: Score, osu_file: Iterator[str]) -> str:
-    expanded_beatmap_file = get_expanded_beatmap_file(osu_file)
-    stars = get_converted_star_rating(score.mods, expanded_beatmap_file)
-    acc = [1.0, 0.99, 0.98, 0.97, 0.95]
-    pp_line = ''
-    for a in acc:
-        pp = get_pp_flexible(
-            a,
-            score.mods,
-            score.beatmap_data,
-            stars,
-            expanded_beatmap_file
-        )
-        pp_line += f'<b>{round(pp, 2)}pp</b> for <b>{round(a * 100)}%</b>\n'
+def recent_message_stat_constructor(score: Score, pp_stat: PerformanceListStat) -> str:
+    pp_line = f'<b>{pp_stat.acc100.pp}pp</b> for <b>100%</b>\n' \
+              f'<b>{pp_stat.acc99.pp}pp</b> for <b>99%</b>\n' \
+              f'<b>{pp_stat.acc98.pp}pp</b> for <b>98%</b>\n' \
+              f'<b>{pp_stat.acc97.pp}pp</b> for <b>97%</b>\n' \
+              f'<b>{pp_stat.acc95.pp}pp</b> for <b>95%</b>\n'
     message = get_stat_message_text(
         score.beatmap_data,
         score.beatmapset.artist,
@@ -139,7 +123,7 @@ def recent_message_stat_constructor(score: Score, osu_file: Iterator[str]) -> st
         score.beatmap_data.difficulty_name,
         score.beatmap_data.url,
         score.beatmap_data.bpm,
-        stars.total,
+        pp_stat.acc100.star_rating,
         score.beatmap_data.total_length,
         pp_line
     )

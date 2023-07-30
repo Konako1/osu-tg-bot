@@ -12,13 +12,13 @@ from message_constructors.utils.cache_check import get_osu_id_by_username
 from message_constructors.utils.class_constructor import create_user_data_class, get_scores
 from message_constructors.utils.utils import gather_requests, get_saved_image
 from model.score import Score
-from request import Request
+from requests.osu_request import OsuRequest
 
 router = Router()
 
 
 @router.message(commands=['top5'])
-async def top_five(message: Message, command: CommandObject, request: Request, db: Db, bot: Bot,):
+async def top_five(message: Message, command: CommandObject, request: OsuRequest, db: Db, bot: Bot, ):
     await bot.send_chat_action(message.chat.id, 'upload_video')
     username = command.args
     user_id = await get_osu_id_by_username(username, db, request, message.from_user.id)

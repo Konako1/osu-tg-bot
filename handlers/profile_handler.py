@@ -1,6 +1,3 @@
-from pprint import pprint
-from typing import Optional
-
 from aiogram import Router, Bot
 from aiogram.dispatcher.filters import CommandObject
 from aiogram.types import Message, FSInputFile
@@ -9,14 +6,14 @@ from httpx import ReadTimeout, HTTPStatusError
 from db import Db
 from message_constructors.utils.class_constructor import create_user_data_class, get_scores, create_score_class
 from message_constructors.profile_constructor import profile_message_constructor
-from request import Request
-from message_constructors.utils.cache_check import get_osu_id_by_username, get_osu_file
+from requests.osu_request import OsuRequest
+from message_constructors.utils.cache_check import get_osu_id_by_username
 
 router = Router()
 
 
 @router.message(commands=['profile'])
-async def profile(message: Message, request: Request, db: Db, bot: Bot, command: CommandObject):
+async def profile(message: Message, request: OsuRequest, db: Db, bot: Bot, command: CommandObject):
     await bot.send_chat_action(message.chat.id, 'record_voice')
     username = command.args
     user_id = await get_osu_id_by_username(username, db, request, message.from_user.id)

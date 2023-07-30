@@ -16,7 +16,7 @@ def api_build_sr_url(fragment: str) -> str:
     return BASE_URL + '/' + fragment.lstrip('/')
 
 
-class Request:
+class OsuRequest:
     def __init__(self, token: str):
         self._token = token
         self._session = httpx.AsyncClient()
@@ -152,6 +152,6 @@ class Request:
 
 
 async def create_request():
-    request = Request('')
+    request = OsuRequest('')
     await request.update_token()
     return request

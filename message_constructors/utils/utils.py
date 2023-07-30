@@ -4,16 +4,15 @@ from collections import Counter
 from pathlib import Path
 
 from PIL import Image
-from pyttanko import beatmap
 
 from api_model.base_score import Statistics
 from api_model.beatmap import BeatmapData
 from db import Db
 from message_constructors.utils.cache_check import save_pic, get_saved_pic, get_osu_file
 from message_constructors.utils.class_constructor import create_score_class
-from message_constructors.utils.osu_calculators import get_pp_for_score
+from model.performance import PerformanceList
 from model.score import Score
-from request import Request
+from requests.osu_request import OsuRequest
 
 
 def build_flag(code: str) -> str:
@@ -117,30 +116,20 @@ def build_user_rank_line(
            f'({flag} #{country_rank}) [{rank_history_line}]\n\n'
 
 
-def get_pp_line(score: Score, rank: str, stars, expanded_beatmap_file: beatmap) -> str:
-    pp, fc_pp, ss_pp = get_pp_for_score(
-        score.accuracy,
-        score.max_combo,
-        score.pp,
-        score.mods,
-        score.beatmap_data,
-        score.statistics,
-        stars,
-        expanded_beatmap_file,
-    )
-    pp_line = f'{round(pp, 2)}pp'
-    fc_pp_line = f'{round(fc_pp, 2)}pp'
-    ss_pp_line = f'{round(ss_pp, 2)}pp'
+def get_pp_line(perfect: bool, rank: str, performance_list: PerformanceList) -> str:
+    pp_line = f'{performance_list.base.pp}pp'
+    fc_pp_line = f'{performance_list.fc.pp}pp'
+    ss_pp_line = f'{performance_list.ss.pp}pp'
     if rank == 'SS' or rank == 'SS+':
         return pp_line
-    if score.perfect:
+    if perfect:
         return f'{pp_line} | {ss_pp_line} if SS'
     if rank == 'F':
         return f'{fc_pp_line} if FC | {ss_pp_line} if SS'
     return f'{pp_line} | {fc_pp_line} if FC | {ss_pp_line} if SS'
 
 
-async def get_saved_image(beatmap_id: int, img_link: str, request: Request) -> Image.Image:
+async def get_saved_image(beatmap_id: int, img_link: str, request: OsuRequest) -> Image.Image:
     img = get_saved_pic('map_bg_cover', beatmap_id)
     if img is None:
         byte_cover = await request.get_pic_as_bytes(img_link)
@@ -168,7 +157,7 @@ def get_edited_bpm(audio_file: Path, beatmap_file: Path):
 
 
 # TODO: try to compress requests in one function
-async def gather_requests(item_list: list, operation: str, request: Request, db: Db) -> list:
+async def gather_requests(item_list: list, operation: str, request: OsuRequest, db: Db) -> list:
     result_list = []
     if operation == 'score':
         for item in item_list:  # type: dict

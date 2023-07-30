@@ -8,10 +8,10 @@ from pydantic import ValidationError
 
 from api_model.beatmap import BeatmapData
 from db import Db
-from request import Request
+from requests.osu_request import OsuRequest
 
 
-async def _get_osu_id(username: str, db: Db, request: Request) -> Optional[int]:
+async def _get_osu_id(username: str, db: Db, request: OsuRequest) -> Optional[int]:
     osu_id = await db.get_cached_osu_id_by_username(username)
     if osu_id is None:
         osu_id = await request.get_user_id(username)
@@ -21,14 +21,14 @@ async def _get_osu_id(username: str, db: Db, request: Request) -> Optional[int]:
     return osu_id
 
 
-async def get_osu_id_by_username(username: str, db: Db, request: Request, tg_user_id: int) -> Optional[int]:
+async def get_osu_id_by_username(username: str, db: Db, request: OsuRequest, tg_user_id: int) -> Optional[int]:
     if username is not None:
         username = username.lower()
         return await _get_osu_id(username, db, request)
     return await db.get_cached_osu_id_by_tg_id(tg_user_id)
 
 
-async def bind_osu_id_with_tg_id(username: str, db: Db, request: Request, tg_user_id: int) -> bool:
+async def bind_osu_id_with_tg_id(username: str, db: Db, request: OsuRequest, tg_user_id: int) -> bool:
     """
     Binds osu user id by username with tg user id. Returns `True` if cached, otherwise `False`.
     """
@@ -40,7 +40,7 @@ async def bind_osu_id_with_tg_id(username: str, db: Db, request: Request, tg_use
     return True
 
 
-async def get_score_position(score_id: int, created_at: datetime, user_id: int, beatmap_id: int, request: Request) -> Optional[int]:
+async def get_score_position(score_id: int, created_at: datetime, user_id: int, beatmap_id: int, request: OsuRequest) -> Optional[int]:
     position = None
     if score_id is not None:
         try:
@@ -55,7 +55,7 @@ async def get_score_position(score_id: int, created_at: datetime, user_id: int, 
     return position
 
 
-async def get_beatmap_data(beatmap_id: int, actual_last_updated: datetime, db: Db, request: Request) -> BeatmapData:
+async def get_beatmap_data(beatmap_id: int, actual_last_updated: datetime, db: Db, request: OsuRequest) -> BeatmapData:
     saved_beatmap_data, saved_last_updated = None, None
     result = await db.get_beatmap_data(beatmap_id)
     if result is not None:
@@ -104,7 +104,7 @@ def save_pic(path: str, osu_id: int, byte_cover: bytes) -> Image.Image:
     return img
 
 
-async def get_osu_file(beatmap_id: int, last_updated: datetime, request: Request) -> TextIO:
+async def get_osu_file(beatmap_id: int, last_updated: datetime, request: OsuRequest) -> TextIO:
     file_path = f'beatmap_files/osu_file/{beatmap_id}_{int(last_updated.timestamp())}.osu'
     try:
         osu_file = open(file_path, encoding='UTF-8')
